@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>MonkMode Daily</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#080810; --bg2:#0d0d1a; --card:#111120; --card2:#161628;
+  --border:#1e1e35; --border2:#252540;
+  --text:#f0f0f8; --text2:#a0a0c0; --text3:#5a5a80; --white:#fff;
+  --green:#00d4aa; --green-dim:rgba(0,212,170,.12);
+  --day-color:#e94560; --day-gradient:linear-gradient(135deg,#e94560,#c73652);
+  --mono:'JetBrains Mono',monospace; --display:'Syne',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--display);overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 50% 40% at 15% 15%,rgba(233,69,96,.05) 0%,transparent 60%),radial-gradient(ellipse 40% 50% at 85% 85%,rgba(74,158,255,.04) 0%,transparent 60%);pointer-events:none;z-index:0}
+
+/* ── LOGIN ── */
+.login-screen{display:none;position:fixed;inset:0;z-index:500;align-items:center;justify-content:center;padding:20px;background:var(--bg)}
+.login-screen.visible{display:flex}
+.login-card{background:var(--card);border:1px solid var(--border);border-radius:28px;padding:48px 36px;text-align:center;max-width:380px;width:100%}
+.login-logo{font-size:52px;margin-bottom:16px}
+.login-title{font-size:28px;font-weight:800;color:var(--white);margin-bottom:8px}
+.login-sub{font-size:14px;color:var(--text3);margin-bottom:40px;line-height:1.6}
+.google-btn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:16px 24px;background:var(--white);border:none;border-radius:14px;font-family:var(--display);font-size:15px;font-weight:700;color:#1a1a2e;cursor:pointer;transition:all .2s}
+.google-btn:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(255,255,255,.1)}
+.google-btn:active{transform:scale(.97)}
+.login-note{margin-top:16px;font-size:11px;color:var(--text3);font-family:var(--mono)}
+
+/* ── SYNC ── */
+.sync-bar{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;justify-content:center;gap:6px;padding:6px 16px;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:1px;transition:all .3s;pointer-events:none}
+.sync-bar.syncing{background:rgba(74,158,255,.15);color:#4a9eff}
+.sync-bar.synced{background:rgba(0,212,170,.1);color:var(--green)}
+.sync-bar.offline{background:rgba(233,69,96,.1);color:#e94560}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.sync-dot.pulse{animation:pulse 1s ease infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ══════════════════════════════════════════════
+   DESKTOP LAYOUT (800px+)
+══════════════════════════════════════════════ */
+.desktop-app{display:none;height:100vh;flex-direction:column}
+@media(min-width:800px){
+  .mobile-app{display:none!important}
+  .desktop-app{display:flex}
+}
+
+/* Desktop Header */
+.desk-header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:var(--card);border-bottom:1px solid var(--border);flex-shrink:0;position:relative;z-index:10}
+.desk-logo{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:3px;color:var(--text3);text-transform:uppercase}
+.desk-header-center{display:flex;align-items:center;gap:12px}
+.desk-week-nav{display:flex;align-items:center;gap:8px}
+.desk-week-btn{background:var(--card2);border:1px solid var(--border2);border-radius:8px;color:var(--text2);font-size:14px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s}
+.desk-week-btn:hover{border-color:var(--day-color);color:var(--day-color)}
+.desk-week-label{font-family:var(--mono);font-size:11px;color:var(--text3);min-width:140px;text-align:center}
+.desk-header-right{display:flex;align-items:center;gap:10px}
+.desk-summary-btn{display:flex;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--border2);border-radius:10px;padding:8px 14px;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+.desk-summary-btn:hover{border-color:var(--day-color);color:var(--day-color)}
+.user-avatar{width:32px;height:32px;border-radius:50%;border:2px solid var(--border);overflow:hidden;cursor:pointer;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.user-avatar img{width:100%;height:100%;object-fit:cover}
+
+/* Desktop Weekly Grid */
+.desk-grid-wrap{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.desk-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));height:100%;overflow:hidden;gap:1px;background:var(--border)}
+
+/* Day Column */
+.day-col{background:var(--bg2);display:flex;flex-direction:column;overflow:hidden;transition:all .2s;cursor:default}
+.day-col.today{background:var(--bg);box-shadow:inset 0 0 0 2px var(--day-color)}
+.day-col.selected{background:var(--card)}
+
+.day-col-header{padding:14px 12px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.day-col-name{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.day-col.today .day-col-name{color:var(--day-color)}
+.day-col-type{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:100px;background:rgba(255,255,255,.05);color:var(--text3)}
+.day-col.today .day-col-type{background:var(--day-color);color:white}
+
+.day-col-progress{margin-top:8px}
+.day-prog-track{height:3px;background:var(--border);border-radius:100px;overflow:hidden}
+.day-prog-fill{height:100%;border-radius:100px;transition:width .5s}
+.day-prog-pct{font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:4px}
+
+.day-col-body{flex:1;overflow-y:auto;padding:8px 0;scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+.day-col-body::-webkit-scrollbar{width:3px}
+.day-col-body::-webkit-scrollbar-track{background:transparent}
+.day-col-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* Desk Todo */
+.desk-todo{display:flex;align-items:flex-start;gap:8px;padding:6px 12px;cursor:pointer;transition:background .15s;border-radius:0}
+.desk-todo:hover{background:rgba(255,255,255,.03)}
+.desk-check{width:14px;height:14px;border:1.5px solid var(--border2);border-radius:4px;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.desk-todo.done .desk-check{background:var(--day-color);border-color:var(--day-color)}
+.desk-todo.done .desk-check::after{content:'✓';color:white;font-size:8px;font-weight:700}
+.desk-todo-text{font-size:11px;color:var(--text2);line-height:1.4;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.desk-todo.done .desk-todo-text{color:var(--text3);text-decoration:line-through;text-decoration-color:var(--text3)}
+
+.desk-section-label{padding:8px 12px 4px;font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--text3);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.desk-section-label:first-child{border-top:none}
+.desk-sec-add{cursor:pointer;font-size:13px;color:var(--text3);padding:0 4px;transition:color .2s}
+.desk-sec-add:hover{color:var(--day-color)}
+.desk-sub-label{padding:3px 12px 1px;font-family:var(--mono);font-size:8px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;justify-content:space-between}
+.desk-sub-add{cursor:pointer;font-size:12px;color:var(--text3);transition:color .2s}
+.desk-sub-add:hover{color:var(--green)}
+.desk-edit-btn{opacity:0;font-size:11px;cursor:pointer;color:var(--text3);flex-shrink:0;padding:0 3px;transition:opacity .2s}
+.desk-todo:hover .desk-edit-btn{opacity:1}
+.desk-del-btn{opacity:0;font-size:11px;cursor:pointer;color:var(--text3);flex-shrink:0;padding:0 3px;transition:opacity .2s}
+.desk-todo:hover .desk-del-btn{opacity:1}
+.desk-section-label:first-child{border-top:none}
+
+/* Desk Stat Row */
+.desk-stat-row{display:flex;gap:8px;padding:6px 12px}
+.desk-stat-mini{flex:1;background:var(--card2);border:1px solid var(--border2);border-radius:8px;padding:8px;text-align:center;cursor:pointer}
+.desk-stat-mini .val{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--white)}
+.desk-stat-mini .lbl{font-size:9px;color:var(--text3);letter-spacing:1px;text-transform:uppercase}
+
+/* ══════════════════════════════════════════════
+   MOBILE LAYOUT
+══════════════════════════════════════════════ */
+.mobile-app{display:block;max-width:100%;position:relative;z-index:1}
+@media(min-width:800px){.mobile-app{display:none}}
+
+/* Mobile swipe container */
+.mobile-swipe-wrap{overflow:hidden;position:relative}
+.mobile-swipe-track{display:flex;transition:transform .3s cubic-bezier(.4,0,.2,1);will-change:transform}
+.mobile-day-slide{min-width:100vw;padding:0 0 120px}
+
+/* Mobile Header */
+.mob-header{padding:32px 20px 0;margin-bottom:20px}
+.mob-header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.mob-logo{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:3px;color:var(--text3);text-transform:uppercase}
+.mob-header-right{display:flex;align-items:center;gap:8px}
+.mob-date{font-family:var(--mono);font-size:11px;color:var(--text3);background:var(--card);border:1px solid var(--border);padding:5px 12px;border-radius:100px}
+
+/* Day dots nav */
+.day-dots{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:16px}
+.day-dot{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;font-weight:700;color:var(--text3);transition:all .2s;font-family:var(--mono)}
+.day-dot.active{background:var(--day-color);border-color:var(--day-color);color:white;transform:scale(1.1)}
+.day-dot.today-dot{border-color:var(--day-color);color:var(--day-color)}
+
+.mob-day-hero{position:relative;border-radius:20px;padding:24px 20px;overflow:hidden;border:1px solid rgba(255,255,255,.06);margin:0 20px}
+.mob-day-hero::before{content:'';position:absolute;inset:0;background:var(--day-gradient);opacity:.1}
+.mob-day-hero::after{content:'';position:absolute;top:-30px;right:-30px;width:140px;height:140px;background:radial-gradient(circle,var(--day-color) 0%,transparent 70%);opacity:.15;border-radius:50%}
+.mob-day-hero-inner{position:relative;z-index:1}
+.mob-day-tag{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:100px;padding:4px 12px;font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--day-color);margin-bottom:10px}
+.mob-day-name{font-size:32px;font-weight:800;color:var(--white);line-height:1;margin-bottom:6px}
+.mob-day-sub{font-size:13px;color:rgba(255,255,255,.5)}
+
+/* Mob progress */
+.mob-progress{padding:16px 20px 0}
+.mob-prog-label{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.mob-prog-label span{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--text3)}
+.mob-prog-pct{color:var(--day-color);font-size:13px;font-weight:700}
+.mob-prog-track{height:4px;background:var(--border);border-radius:100px;overflow:hidden}
+.mob-prog-fill{height:100%;background:var(--day-color);border-radius:100px;transition:width .5s;box-shadow:0 0 10px var(--day-color)}
+
+/* Mob stats */
+.mob-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 20px}
+.mob-stat{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;position:relative;overflow:hidden}
+.mob-stat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--sc,var(--border2))}
+.mob-stat:active{transform:scale(.97)}
+.mob-stat-icon{font-size:18px;margin-bottom:6px}
+.mob-stat-val{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--white);line-height:1}
+.mob-stat-label{font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin-top:2px}
+.stat-input-wrap{display:none;margin-top:8px;gap:6px}
+.stat-input-wrap.open{display:flex}
+.stat-input{flex:1;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;min-width:0}
+.stat-input:focus{border-color:var(--day-color)}
+.stat-save{background:var(--day-color);border:none;border-radius:8px;padding:7px 10px;color:white;font-size:11px;font-weight:700;cursor:pointer}
+
+/* Mob section */
+.mob-section{margin:0 20px 14px;background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:hidden}
+.mob-sec-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 14px;cursor:pointer;border-bottom:1px solid var(--border)}
+.mob-sec-title{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text2)}
+.mob-sec-icon{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px}
+.mob-sec-meta{display:flex;align-items:center;gap:6px}
+.mob-sec-count{font-family:var(--mono);font-size:10px;color:var(--text3)}
+.mob-sec-chev{color:var(--text3);font-size:11px;transition:transform .2s}
+.mob-section.collapsed .mob-sec-chev{transform:rotate(-90deg)}
+.mob-section.collapsed .mob-sec-body{display:none}
+.mob-sec-body{padding:4px 0 6px}
+
+/* Mob todo */
+.mob-todo{display:flex;align-items:flex-start;gap:12px;padding:10px 18px;cursor:pointer;transition:background .15s}
+.mob-todo:hover{background:rgba(255,255,255,.02)}
+.mob-check{width:19px;height:19px;border:2px solid var(--border2);border-radius:6px;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.mob-todo.done .mob-check{background:var(--day-color);border-color:var(--day-color)}
+.mob-todo.done .mob-check::after{content:'✓';color:white;font-size:10px;font-weight:700}
+.mob-todo-content{flex:1}
+.mob-todo-time{font-family:var(--mono);font-size:9px;font-weight:600;color:var(--day-color);letter-spacing:1px;margin-bottom:2px;opacity:.8}
+.mob-todo-text{font-size:13px;font-weight:500;color:var(--text);line-height:1.4}
+.mob-todo.done .mob-todo-text{color:var(--text3);text-decoration:line-through;text-decoration-color:var(--text3)}
+.mob-todo-edit{opacity:0;color:var(--text3);font-size:14px;cursor:pointer;transition:opacity .2s;flex-shrink:0}
+.mob-todo:hover .mob-todo-edit{opacity:1}
+
+/* Mob subsection */
+.mob-subsection{padding:12px 18px 4px;border-top:1px solid var(--border)}
+.mob-subsection:first-child{border-top:none}
+.mob-sub-title{font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.mob-kcal{color:var(--green);font-size:10px}
+
+/* Mob meal */
+.mob-meal{display:flex;align-items:center;gap:8px;padding:8px 18px;cursor:pointer;transition:background .15s}
+.mob-meal:hover{background:rgba(255,255,255,.02)}
+.mob-meal-dot{width:5px;height:5px;border-radius:50%;background:var(--green);flex-shrink:0}
+.mob-meal-text{font-size:13px;color:var(--text2);flex:1;line-height:1.4}
+.mob-meal-check{width:17px;height:17px;border:1.5px solid var(--border2);border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s}
+.mob-meal.done .mob-meal-check{background:var(--green);border-color:var(--green)}
+.mob-meal.done .mob-meal-check::after{content:'✓';color:white;font-size:9px;font-weight:700}
+.mob-meal.done .mob-meal-text{color:var(--text3);text-decoration:line-through;text-decoration-color:var(--text3)}
+.mob-meal-del{opacity:0;color:var(--text3);font-size:13px;cursor:pointer;transition:opacity .2s}
+.mob-meal:hover .mob-meal-del{opacity:1}
+
+/* Mob exercise */
+.mob-ex-card{margin:6px 18px;background:var(--card2);border:1px solid var(--border2);border-radius:12px;padding:14px;cursor:pointer;position:relative;overflow:hidden}
+.mob-ex-card::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:var(--day-color)}
+.mob-ex-card:active{transform:scale(.98)}
+.mob-ex-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
+.mob-ex-name{font-size:13px;font-weight:700;color:var(--text);padding-left:8px}
+.mob-ex-actions{display:flex;align-items:center;gap:6px}
+.mob-ex-done{width:20px;height:20px;border:1.5px solid var(--border2);border-radius:6px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.mob-ex-card.done .mob-ex-done{background:var(--day-color);border-color:var(--day-color)}
+.mob-ex-card.done .mob-ex-done::after{content:'✓';color:white;font-size:10px;font-weight:700}
+.mob-ex-card.done .mob-ex-name{color:var(--text3);text-decoration:line-through}
+.mob-ex-edit{border:none;background:transparent;color:var(--text3);font-size:13px;cursor:pointer;opacity:0;transition:opacity .2s}
+.mob-ex-card:hover .mob-ex-edit{opacity:1}
+.mob-ex-desc{font-size:11px;color:var(--text3);padding-left:8px;margin-bottom:8px;line-height:1.5}
+.mob-ex-badges{display:flex;gap:6px;padding-left:8px;flex-wrap:wrap}
+.mob-ex-badge{font-family:var(--mono);font-size:9px;font-weight:600;padding:2px 8px;border-radius:100px}
+.mob-ex-badge.sets{background:var(--day-color);color:white;opacity:.9}
+.mob-ex-badge.rest{background:var(--border2);color:var(--text3)}
+
+/* Add btn */
+.add-btn{display:flex;align-items:center;gap:8px;margin:6px 18px 10px;padding:9px 14px;background:transparent;border:1.5px dashed var(--border2);border-radius:10px;color:var(--text3);font-family:var(--display);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;width:calc(100% - 36px)}
+.add-btn:hover{border-color:var(--day-color);color:var(--day-color)}
+
+/* Callout */
+.mob-callout{margin:10px 18px 6px;background:var(--green-dim);border:1px solid rgba(0,212,170,.2);border-radius:10px;padding:10px 14px;font-size:11px;color:var(--green);font-family:var(--mono);font-weight:500;line-height:1.6}
+
+/* Note */
+.mob-note-area{padding:10px 18px}
+.mob-note-label{font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
+.mob-note-input{width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:9px;padding:10px 12px;color:var(--text);font-family:var(--display);font-size:12px;outline:none;resize:none;min-height:70px;transition:border-color .2s;line-height:1.6}
+.mob-note-input:focus{border-color:var(--day-color)}
+.mob-note-input::placeholder{color:var(--text3)}
+
+/* Motivation */
+.mob-motivation{margin:0 20px 16px;background:rgba(233,69,96,.05);border:1px solid rgba(233,69,96,.15);border-radius:18px;padding:18px;text-align:center}
+.mob-motivation p{font-size:13px;font-weight:600;color:var(--text2);line-height:1.6;font-style:italic}
+.mob-motivation .author{font-family:var(--mono);font-size:9px;color:#e94560;letter-spacing:2px;margin-top:6px;display:block}
+
+/* Mobile bottom nav */
+.mob-bottom-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(8,8,16,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--border);padding:10px 16px 22px;z-index:100;display:flex;align-items:center;justify-content:space-between}
+.mob-nav-btn{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:4px 8px;border-radius:10px;transition:all .2s;border:none;background:transparent;color:var(--text3)}
+.mob-nav-btn.active{color:var(--day-color)}
+.mob-nav-btn:active{transform:scale(.9)}
+.mob-nav-icon{font-size:18px}
+.mob-nav-label{font-size:8px;font-weight:600;letter-spacing:1px;text-transform:uppercase}
+
+/* ══════════════════════════════════════════════
+   WEEKLY SUMMARY MODAL
+══════════════════════════════════════════════ */
+.summary-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(12px);z-index:600;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto}
+.summary-overlay.open{display:flex}
+.summary-modal{background:var(--card);border:1px solid var(--border2);border-radius:24px;padding:32px 28px;width:100%;max-width:680px;margin:auto}
+.summary-close{float:right;background:var(--border);border:none;border-radius:8px;color:var(--text2);padding:6px 12px;font-size:13px;cursor:pointer;font-family:var(--display);font-weight:600}
+.summary-title{font-size:22px;font-weight:800;color:var(--white);margin-bottom:4px}
+.summary-period{font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:24px;display:block}
+
+.summary-stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:24px}
+.sum-stat{background:var(--card2);border:1px solid var(--border2);border-radius:14px;padding:16px;text-align:center}
+.sum-stat-val{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--white);margin-bottom:4px}
+.sum-stat-val.good{color:var(--green)}
+.sum-stat-val.accent{color:var(--day-color)}
+.sum-stat-label{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text3)}
+
+.summary-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin-bottom:24px}
+.sum-day{background:var(--card2);border:1px solid var(--border2);border-radius:12px;padding:12px 8px;text-align:center}
+.sum-day.complete{border-color:var(--green);background:rgba(0,212,170,.05)}
+.sum-day.partial{border-color:var(--day-color);background:rgba(233,69,96,.05)}
+.sum-day-name{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
+.sum-day-emoji{font-size:18px;margin-bottom:6px}
+.sum-day-pct{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--text2)}
+.sum-day.complete .sum-day-pct{color:var(--green)}
+
+.summary-section-title{font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin-bottom:12px}
+.sum-notes{background:var(--card2);border:1px solid var(--border2);border-radius:12px;padding:16px;font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:20px;white-space:pre-wrap}
+.sum-weight-row{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+.sum-weight-item{flex:1;background:var(--card2);border:1px solid var(--border2);border-radius:12px;padding:14px;text-align:center}
+.sum-weight-val{font-family:var(--mono);font-size:18px;font-weight:700;color:var(--white)}
+.sum-weight-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-top:4px}
+.sum-weight-change{font-family:var(--mono);font-size:16px;font-weight:700}
+.sum-weight-change.loss{color:var(--green)}
+.sum-weight-change.gain{color:var(--day-color)}
+
+/* Week nav in summary */
+.sum-week-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.sum-nav-btn{background:var(--card2);border:1px solid var(--border2);border-radius:8px;color:var(--text2);font-size:13px;padding:6px 14px;cursor:pointer;font-family:var(--display);font-weight:600;transition:all .2s}
+.sum-nav-btn:hover{border-color:var(--day-color);color:var(--day-color)}
+
+/* ══════════════════════════════════════════════
+   SHARED MODALS
+══════════════════════════════════════════════ */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(10px);z-index:300;align-items:flex-end;justify-content:center;padding:0}
+.overlay.open{display:flex}
+.modal{background:var(--card);border:1px solid var(--border2);border-radius:24px 24px 0 0;padding:28px 24px 40px;width:100%;max-width:480px;max-height:85vh;overflow-y:auto}
+.modal-title{font-size:17px;font-weight:800;margin-bottom:18px;color:var(--white)}
+.modal-field{margin-bottom:12px}
+.modal-label{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin-bottom:5px;display:block}
+.modal-input{width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:9px;padding:11px 13px;color:var(--text);font-family:var(--display);font-size:13px;outline:none;transition:border-color .2s}
+.modal-input:focus{border-color:var(--day-color)}
+.modal-input::placeholder{color:var(--text3)}
+.modal-btns{display:flex;gap:10px;margin-top:18px}
+.modal-cancel{flex:1;padding:13px;background:var(--border);border:none;border-radius:11px;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--display)}
+.modal-save{flex:2;padding:13px;background:var(--day-color);border:none;border-radius:11px;color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--display)}
+.modal-del{flex:1;padding:13px;background:rgba(233,69,96,.15);border:1px solid rgba(233,69,96,.3);border-radius:11px;color:#e94560;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--display)}
+
+/* User menu */
+.user-menu{display:none;position:fixed;top:56px;right:16px;background:var(--card);border:1px solid var(--border2);border-radius:14px;padding:14px;z-index:400;min-width:200px;box-shadow:0 16px 48px rgba(0,0,0,.4)}
+.user-menu.open{display:block}
+.user-info{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.user-info img{width:36px;height:36px;border-radius:50%}
+.user-name{font-size:13px;font-weight:700;color:var(--white)}
+.user-email{font-size:10px;color:var(--text3);font-family:var(--mono)}
+.menu-item{display:flex;align-items:center;gap:8px;padding:9px;border-radius:9px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);transition:all .2s}
+.menu-item:hover{background:var(--border);color:var(--text)}
+.menu-item.danger{color:#e94560}
+.menu-item.danger:hover{background:rgba(233,69,96,.1)}
+
+/* Reset */
+.reset-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(10px);z-index:400;align-items:center;justify-content:center;padding:20px}
+.reset-overlay.open{display:flex}
+.reset-modal{background:var(--card);border:1px solid var(--border2);border-radius:22px;padding:28px 24px;text-align:center;max-width:320px;width:100%}
+.reset-modal h3{font-size:18px;font-weight:800;margin-bottom:8px}
+.reset-modal p{color:var(--text3);font-size:13px;margin-bottom:20px;line-height:1.6}
+.reset-btns{display:flex;gap:10px}
+.btn-cancel{flex:1;padding:13px;background:var(--border);border:none;border-radius:11px;color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--display)}
+.btn-confirm{flex:1;padding:13px;background:#e94560;border:none;border-radius:11px;color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--display)}
+
+/* Toast */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--card2);border:1px solid var(--border2);border-radius:100px;padding:9px 18px;font-size:12px;font-weight:600;color:var(--text);z-index:600;transition:transform .3s cubic-bezier(.4,0,.2,1);white-space:nowrap;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+.toast.show{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-screen visible" id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">💪</div>
+    <div class="login-title">MonkMode Daily</div>
+    <div class="login-sub">Günlük programını takip et.<br>Her cihazda senkronize.</div>
+    <button class="google-btn" id="gBtn">
+      <svg width="22" height="22" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Google ile Giriş Yap
+    </button>
+    <div class="login-note">Verileriniz güvende. Sadece siz görebilirsiniz.</div>
+  </div>
+</div>
+
+<!-- SYNC -->
+<div class="sync-bar" id="syncBar"><div class="sync-dot" id="syncDot"></div><span id="syncText"></span></div>
+
+<!-- USER MENU -->
+<div class="user-menu" id="userMenu">
+  <div class="user-info"><img id="menuAvatar" src="" alt=""><div><div class="user-name" id="menuName"></div><div class="user-email" id="menuEmail"></div></div></div>
+  <div class="menu-item" onclick="closeUserMenu()">✕ Kapat</div>
+  <div class="menu-item danger" onclick="doSignOut()">🚪 Çıkış Yap</div>
+</div>
+
+<!-- ══ DESKTOP ══════════════════════════════════════════════════════════════ -->
+<div class="desktop-app" id="desktopApp" style="display:none">
+  <div class="desk-header">
+    <div class="desk-logo">// MonkMode</div>
+    <div class="desk-header-center">
+      <div class="desk-week-nav">
+        <div class="desk-week-btn" onclick="changeWeek(-1)">←</div>
+        <div class="desk-week-label" id="deskWeekLabel">Bu Hafta</div>
+        <div class="desk-week-btn" onclick="changeWeek(1)">→</div>
+      </div>
+    </div>
+    <div class="desk-header-right">
+      <button class="desk-summary-btn" id="deskSummaryBtn">📊 Haftalık Özet</button>
+      <div class="user-avatar" id="deskUserAvatar" onclick="toggleUserMenu()">👤</div>
+    </div>
+  </div>
+  <div class="desk-grid-wrap">
+    <div class="desk-grid" id="deskGrid"></div>
+  </div>
+</div>
+
+<!-- ══ MOBILE ══════════════════════════════════════════════════════════════ -->
+<div class="mobile-app" id="mobileApp" style="display:none">
+  <div class="mob-header">
+    <div class="mob-header-top">
+      <div class="mob-logo">// MonkMode</div>
+      <div class="mob-header-right">
+        <div class="mob-date" id="mobDate">—</div>
+        <div class="user-avatar" id="mobUserAvatar" onclick="toggleUserMenu()">👤</div>
+      </div>
+    </div>
+    <div class="day-dots" id="dayDots"></div>
+  </div>
+
+  <div class="mobile-swipe-wrap" id="swipeWrap">
+    <div class="mobile-swipe-track" id="swipeTrack"></div>
+  </div>
+
+  <div class="mob-bottom-nav">
+    <button class="mob-nav-btn active" onclick="mobScrollTo('rutin',this)"><span class="mob-nav-icon">📅</span><span class="mob-nav-label">Rutin</span></button>
+    <button class="mob-nav-btn" onclick="mobScrollTo('beslenme',this)"><span class="mob-nav-icon">🥗</span><span class="mob-nav-label">Yemek</span></button>
+    <button class="mob-nav-btn" onclick="mobScrollTo('antrenman',this)"><span class="mob-nav-icon">💪</span><span class="mob-nav-label">Antrenman</span></button>
+    <button class="mob-nav-btn" onclick="mobScrollTo('notlar',this)"><span class="mob-nav-icon">📝</span><span class="mob-nav-label">Notlar</span></button>
+    <button class="mob-nav-btn" id="mobSummaryBtn"><span class="mob-nav-icon">📊</span><span class="mob-nav-label">Özet</span></button>
+    <button class="mob-nav-btn" onclick="showReset()"><span class="mob-nav-icon">🔄</span><span class="mob-nav-label">Sıfırla</span></button>
+  </div>
+</div>
+
+<!-- ══ WEEKLY SUMMARY ════════════════════════════════════════════════════════ -->
+<div class="summary-overlay" id="summaryOverlay">
+  <div class="summary-modal">
+    <button class="summary-close" id="closeSummaryBtn">✕ Kapat</button>
+    <div class="summary-title">📊 Haftalık Özet</div>
+    <div class="sum-week-nav">
+      <button class="sum-nav-btn" id="sumPrevBtn">← Önceki Hafta</button>
+      <span class="summary-period" id="summaryPeriod" style="margin:0"></span>
+      <button class="sum-nav-btn" id="sumNextBtn">Sonraki Hafta →</button>
+    </div>
+    <div id="summaryContent"></div>
+  </div>
+</div>
+
+<!-- ══ EDIT MODALS ═══════════════════════════════════════════════════════════ -->
+<div class="overlay" id="editRutinOverlay">
+  <div class="modal">
+    <div class="modal-title">Rutin Düzenle</div>
+    <div class="modal-field"><label class="modal-label">Saat</label><input class="modal-input" id="editRutinTime" placeholder="10:00–10:45"></div>
+    <div class="modal-field"><label class="modal-label">Görev</label><input class="modal-input" id="editRutinText" placeholder="Kahvaltı"></div>
+    <div class="modal-btns"><button class="modal-cancel" onclick="closeModal('editRutinOverlay')">İptal</button><button class="modal-del" onclick="deleteRutinItem()">Sil</button><button class="modal-save" onclick="saveRutinItem()">Kaydet</button></div>
+  </div>
+</div>
+<div class="overlay" id="addRutinOverlay">
+  <div class="modal">
+    <div class="modal-title">Yeni Rutin Ekle</div>
+    <div class="modal-field"><label class="modal-label">Saat</label><input class="modal-input" id="addRutinTime" placeholder="10:00–10:45"></div>
+    <div class="modal-field"><label class="modal-label">Görev</label><input class="modal-input" id="addRutinText" placeholder="Ne yapacaksın?"></div>
+    <div class="modal-btns"><button class="modal-cancel" onclick="closeModal('addRutinOverlay')">İptal</button><button class="modal-save" onclick="addRutinItem()">Ekle</button></div>
+  </div>
+</div>
+<div class="overlay" id="addMealOverlay">
+  <div class="modal">
+    <div class="modal-title">Yemek Ekle</div>
+    <div class="modal-field"><label class="modal-label">Öğün</label><select class="modal-input" id="addMealType"><option value="kahvalti">Kahvaltı</option><option value="araOgun">Ara Öğün</option><option value="aksam">Akşam Yemeği</option></select></div>
+    <div class="modal-field"><label class="modal-label">Yemek</label><input class="modal-input" id="addMealText" placeholder="200g ızgara tavuk"></div>
+    <div class="modal-btns"><button class="modal-cancel" onclick="closeModal('addMealOverlay')">İptal</button><button class="modal-save" onclick="addMealItem()">Ekle</button></div>
+  </div>
+</div>
+<div class="overlay" id="addExOverlay">
+  <div class="modal">
+    <div class="modal-title" id="addExTitle">Egzersiz Ekle</div>
+    <div class="modal-field"><label class="modal-label">Ad</label><input class="modal-input" id="addExName" placeholder="Squat"></div>
+    <div class="modal-field"><label class="modal-label">Açıklama</label><input class="modal-input" id="addExDesc" placeholder="Nasıl yapılır?"></div>
+    <div class="modal-field"><label class="modal-label">Set × Tekrar</label><input class="modal-input" id="addExSets" placeholder="4 Set × 12-15"></div>
+    <div class="modal-field"><label class="modal-label">Dinlenme</label><input class="modal-input" id="addExRest" placeholder="60 sn"></div>
+    <div class="modal-btns"><button class="modal-cancel" onclick="closeModal('addExOverlay')">İptal</button><button class="modal-del" id="addExDel" style="display:none" onclick="deleteExItem()">Sil</button><button class="modal-save" onclick="saveExItem()">Kaydet</button></div>
+  </div>
+</div>
+
+<div class="reset-overlay" id="resetOverlay">
+  <div class="reset-modal"><h3>Günü Sıfırla</h3><p>Tüm checkbox'lar sıfırlanacak.</p><div class="reset-btns"><button class="btn-cancel" onclick="hideReset()">İptal</button><button class="btn-confirm" onclick="resetDay()">Sıfırla</button></div></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut as fbSignOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const fbConfig = {
+  apiKey:"AIzaSyAJyR4NSJLKS6bjbV9tlPVzPdgHkx6jeRI",
+  authDomain:"monkmodedaily-396d7.firebaseapp.com",
+  databaseURL:"https://monkmodedaily-396d7-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:"monkmodedaily-396d7",
+  storageBucket:"monkmodedaily-396d7.firebasestorage.app",
+  messagingSenderId:"909643451957",
+  appId:"1:909643451957:web:cad4b616cff0233745eb7c"
+};
+const fbApp = initializeApp(fbConfig);
+const auth = getAuth(fbApp);
+const db = getDatabase(fbApp);
+let currentUser = null;
+
+// ── DEFAULT PROGRAMS ─────────────────────────────────────────────────────────
+const DP = {
+  0:{name:'Pazar',type:'Dinlenme',color:'#5a5a80',gradient:'linear-gradient(135deg,#5a5a80,#3a3a58)',subtitle:'Kaslar Bu Gün Gelişir',emoji:'😴',
+    rutin:[{time:'10:00',text:'Uyan — su iç'},{time:'10:00–10:45',text:'Kahvaltı'},{time:'11:00–12:00',text:'Hafif yürüyüş (opsiyonel)'},{time:'14:00–16:00',text:'Danışan dersleri'},{time:'16:00–16:30',text:'Ara öğün'},{time:'17:30–19:00',text:'Kendi işlerin'},{time:'19:00–19:45',text:'Akşam yemeği'},{time:'21:00–21:20',text:'Günü kapat: 3 başarı + 3 hedef'},{time:'01:30',text:'Uyu'}],
+    meals:{kahvalti:{kal:430,items:['2 haşlama yumurta','50g beyaz peynir','2 dilim tam buğday ekmek','Domates + salatalık']},araOgun:{kal:200,items:['200g yoğurt','Havuç + mısır']},aksam:{kal:700,items:['200g fırında somon','Ispanak sote','150g haşlanmış patates']}},
+    exercises:[{name:'Tam Dinlenme',desc:'Kaslar dinlenme sırasında gelişir.',sets:'—',rest:'—'}]},
+  1:{name:'Pazartesi',type:'PUSH',color:'#e94560',gradient:'linear-gradient(135deg,#e94560,#c73652)',subtitle:'Göğüs · Omuz · Triceps',emoji:'🔴',
+    rutin:[{time:'10:00',text:'Uyan — su iç (telefona ilk 30 dk bakma)'},{time:'10:00–10:45',text:'Kahvaltı'},{time:'11:00–13:00',text:'Antrenman: PUSH'},{time:'13:00–13:30',text:'Dinlenme + protein al'},{time:'14:00–16:00',text:'Danışan dersleri'},{time:'16:00–16:30',text:'Ara öğün'},{time:'16:30–17:30',text:'Mola'},{time:'17:30–19:00',text:'Kendi işlerin'},{time:'19:00–19:45',text:'Akşam yemeği'},{time:'21:00–21:20',text:'Günü kapat: 3 başarı + 3 hedef'},{time:'21:20–01:00',text:'Serbest zaman 🎮'},{time:'01:30',text:'Uyu'}],
+    meals:{kahvalti:{kal:450,items:['3 yumurta sahanda','40g beyaz peynir','2 dilim tam buğday ekmek','Domates + salatalık']},araOgun:{kal:200,items:['200g sade yoğurt','1 muz']},aksam:{kal:700,items:['200g ızgara tavuk göğsü','Haşlanmış ıspanak','150g haşlanmış patates']}},
+    exercises:[{name:'Geniş Tutuş Şınav',desc:'Göğüs yere değene kadar in.',sets:'4 Set × 12-15',rest:'60 sn'},{name:'Pike Push-Up',desc:'Ters V — omuz hedefli.',sets:'3 Set × 10-12',rest:'60 sn'},{name:'Dar Tutuş Şınav',desc:'Triceps hedefli.',sets:'3 Set × 10-12',rest:'60 sn'},{name:'Sandalye Dip',desc:'Triceps için in-çık.',sets:'3 Set × 12-15',rest:'60 sn'}]},
+  2:{name:'Salı',type:'Yürüyüş',color:'#9b59b6',gradient:'linear-gradient(135deg,#9b59b6,#6c3483)',subtitle:'Aktif Dinlenme',emoji:'🚶',
+    rutin:[{time:'10:00',text:'Uyan — su iç'},{time:'10:00–10:45',text:'Kahvaltı'},{time:'11:00–13:00',text:'Yürüyüş — 90 dakika'},{time:'14:00–16:00',text:'Danışan dersleri'},{time:'16:00–16:30',text:'Ara öğün'},{time:'17:30–19:00',text:'Kendi işlerin'},{time:'19:00–19:45',text:'Akşam yemeği'},{time:'21:00–21:20',text:'Günü kapat: 3 başarı + 3 hedef'},{time:'01:30',text:'Uyu'}],
+    meals:{kahvalti:{kal:430,items:['2 haşlama yumurta','50g beyaz peynir','2 dilim tam buğday ekmek','Domates + salatalık']},araOgun:{kal:180,items:['2 haşlama yumurta','1 havuç']},aksam:{kal:720,items:['200g kıymalı patlıcan','Biber sotesi','2 dilim ekmek']}},
+    exercises:[{name:'Yürüyüş',desc:'90 dk tempolu yürüyüş.',sets:'90 Dakika',rest:'—'}]},
+  3:{name:'Çarşamba',type:'PULL',color:'#4a9eff',gradient:'linear-gradient(135deg,#4a9eff,#2176ae)',subtitle:'Sırt · Biceps · Core',emoji:'🔵',
+    rutin:[{time:'10:00',text:'Uyan — su iç'},{time:'10:00–10:45',text:'Kahvaltı'},{time:'11:00–13:00',text:'Antrenman: PULL'},{time:'13:00–13:30',text:'Dinlenme + protein al'},{time:'14:00–16:00',text:'Danışan dersleri'},{time:'16:00–16:30',text:'Ara öğün'},{time:'16:30–17:30',text:'Mola'},{time:'17:30–19:00',text:'Kendi işlerin'},{time:'19:00–19:45',text:'Akşam yemeği'},{time:'21:00–21:20',text:'Günü kapat: 3 başarı + 3 hedef'},{time:'21:20–01:00',text:'Serbest zaman 🎮'},{time:'01:30',text:'Uyu'}],
+    meals:{kahvalti:{kal:450,items:['3 yumurta omlet','40g beyaz peynir','2 dilim tam buğday ekmek','Salatalık']},araOgun:{kal:220,items:['200g sade yoğurt','1 avuç mısır']},aksam:{kal:700,items:['200g somon/levrek (fırında)','Ispanak sote','150g patates']}},
+    exercises:[{name:'Havlu Row',desc:'Kapıya dolaştır, göğse çek.',sets:'4 Set × 12-15',rest:'60 sn'},{name:'Superman',desc:'Kol+bacak kaldır, 2 sn tut.',sets:'3 Set × 12-15',rest:'60 sn'},{name:'Biceps Curl',desc:'Su şişesiyle tam açılım.',sets:'3 Set × 12-15',rest:'60 sn'},{name:'Plank',desc:'Vücut düz çizgi, nefes düzenli.',sets:'3 Set × 45 sn',rest:'60 sn'}]},
+  4:{name:'Perşembe',type:'Yürüyüş',color:'#9b59b6',gradient:'linear-gradient(135deg,#9b59b6,#6c3483)',subtitle:'Aktif Dinlenme',emoji:'🚶',
+    rutin:[{time:'10:00',text:'Uyan — su iç'},{time:'10:00–10:45',text:'Kahvaltı'},{time:'11:00–13:00',text:'Yürüyüş — 90 dakika'},{time:'14:00–16:00',text:'Danışan dersleri'},{time:'16:00–16:30',text:'Ara öğün'},{time:'17:30–19:00',text:'Kendi işlerin'},{time:'19:00–19:45',text:'Akşam yemeği'},{time:'21:00–21:20',text:'Günü kapat: 3 başarı + 3 hedef'},{time:'01:30',text:'Uyu'}],
+    meals:{kahvalti:{kal:430,items:['2 haşlama yumurta','50g beyaz peynir','2 dilim tam buğday ekmek','Domates + salatalık']},araOgun:{kal:200,items:['200g sade yoğurt','1 muz']},aksam:{kal:720,items:['200g ızgara köfte','Közlenmiş biber + patlıcan','2 dilim ekmek']}},
+    exercises:[{name:'Yürüyüş',desc:'90 dk tempolu yürüyüş.',sets:'90 Dakika',rest:'—'}]},
+  5:{name:'Cuma',type:'BACAK',color:'#00d4aa',gradient:'linear-gradient(135deg,#00d4aa,#00a882)',subtitle:'Quad · Hamstring · Kalça',emoji:'🟢',
+    rutin:[{time:'10:00',text:'Uyan — su iç'},{time:'10:00–10:45',text:'Kahvaltı'},{time:'11:00–13:00',text:'Antrenman: BACAK'},{time:'13:00–13:30',text:'Dinlenme + protein al'},{time:'14:00–16:00',text:'Danışan dersleri'},{time:'16:00–16:30',text:'Ara öğün'},{time:'16:30–17:30',text:'Mola'},{time:'17:30–19:00',text:'Kendi işlerin'},{time:'19:00–19:45',text:'Akşam yemeği'},{time:'21:00–21:20',text:'Günü kapat: 3 başarı + 3 hedef'},{time:'21:20–01:00',text:'Serbest zaman 🎮'},{time:'01:30',text:'Uyu'}],
+    meals:{kahvalti:{kal:450,items:['3 yumurta sahanda','40g beyaz peynir','2 dilim tam buğday ekmek','Domates + salatalık']},araOgun:{kal:180,items:['2 haşlama yumurta','1 havuç']},aksam:{kal:700,items:['200g fırında tavuk but','Marullu söğüş','150g patates']}},
+    exercises:[{name:'Squat',desc:'Diz 90° — sırt dik, topuklar yerde.',sets:'4 Set × 15-20',rest:'60 sn'},{name:'Lunge',desc:'Arka diz yere değene kadar in.',sets:'3 Set × 12/bacak',rest:'60 sn'},{name:'Glute Bridge',desc:'Kalçayı kaldır, 1 sn tut.',sets:'4 Set × 15-20',rest:'60 sn'},{name:'Duvar Oturması',desc:'90° — quadriceps tam yanar!',sets:'3 Set × 45 sn',rest:'60 sn'}]},
+  6:{name:'Cumartesi',type:'FULL BODY',color:'#f5a623',gradient:'linear-gradient(135deg,#f5a623,#d4861a)',subtitle:'Tüm Vücut · Karın',emoji:'🟠',
+    rutin:[{time:'10:00',text:'Uyan — su iç'},{time:'10:00–10:45',text:'Kahvaltı'},{time:'11:00–13:00',text:'Antrenman: FULL BODY'},{time:'13:00–13:30',text:'Dinlenme + protein al'},{time:'14:00–16:00',text:'Danışan dersleri'},{time:'16:00–16:30',text:'Ara öğün'},{time:'16:30–17:30',text:'Mola'},{time:'17:30–19:00',text:'Kendi işlerin'},{time:'19:00–19:45',text:'Akşam yemeği — SERBEST 🎉'},{time:'21:00–21:20',text:'Günü kapat: 3 başarı + 3 hedef'},{time:'21:20–01:00',text:'Serbest zaman 🎮'},{time:'01:30',text:'Uyu'}],
+    meals:{kahvalti:{kal:450,items:['3 yumurta omlet','50g beyaz peynir','2 dilim tam buğday ekmek','Domates + salatalık']},araOgun:{kal:200,items:['200g yoğurt','1 muz']},aksam:{kal:0,free:true,items:['🎉 SERBEST ÖĞÜN — fast food dahil','Haftanın tek hakkı!']}},
+    exercises:[{name:'Burpee',desc:'Squat→uzan→şınav→kalk→zıpla.',sets:'4 Set × 10',rest:'75 sn'},{name:'Mekik',desc:'Sadece omuzları kaldır.',sets:'4 Set × 15-20',rest:'60 sn'},{name:'Mountain Climber',desc:'Plankta hızlı diz çekme.',sets:'3 Set × 30 sn',rest:'60 sn'},{name:'Plank',desc:'Core sıkı, nefes düzenli.',sets:'3 Set × 45 sn',rest:'60 sn'}]},
+};
+
+const MOTIVATIONS=['Hayallerin var ve asla vazgeçmiyorsun.','Disiplin, motivasyon olmadığında da devam etmektir.','Her büyük başarı, küçük adımların birikimidir.','Bugün yapman gerekenler, yarının sonuçlarını belirler.','Başarı bir alışkanlıktır, bir tesadüf değil.','En zor adım ilk adımdır. Sonrasını rutin halleder.','Kendine verdiğin söz herkese verdiğinden önemlidir.'];
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+let dayStates = {}; // keyed by dateKey
+let programs = JSON.parse(JSON.stringify(DP));
+let currentMobileDay = new Date().getDay();
+let desktopWeekOffset = 0;
+let summaryWeekOffset = 0;
+let editingRutinIdx = null, editingExIdx = null;
+let saving = false;
+
+function dateKey(d) { return `day_${d.getFullYear()}_${d.getMonth()}_${d.getDate()}`; }
+function todayKey() { return dateKey(new Date()); }
+function getDateForKey(key) { const p=key.split('_'); return new Date(+p[1],+p[2],+p[3]); }
+
+function getWeekDates(offset=0) {
+  const now = new Date();
+  now.setHours(0,0,0,0);
+  const dow = now.getDay(); // 0=Sun, 1=Mon...
+  // Find Monday of current week (treat Sunday as end of week, not start)
+  const diffToMonday = dow === 0 ? -6 : 1 - dow;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diffToMonday + (offset * 7));
+  monday.setHours(0,0,0,0);
+  // Return 7 days: Mon, Tue, Wed, Thu, Fri, Sat, Sun
+  return Array.from({length:7}, (_, i) => {
+    const d = new Date(monday.getTime());
+    d.setDate(monday.getDate() + i);
+    return d;
+  });
+}
+
+function userRef(path) { return ref(db,`users/${currentUser.uid}/${path}`); }
+
+// ── SYNC ─────────────────────────────────────────────────────────────────────
+function setSS(status,text) {
+  const bar=document.getElementById('syncBar'),dot=document.getElementById('syncDot'),txt=document.getElementById('syncText');
+  bar.className='sync-bar '+status; txt.textContent=text;
+  dot.className='sync-dot'+(status==='syncing'?' pulse':'');
+  if(status==='synced') setTimeout(()=>{bar.className='sync-bar';txt.textContent='';},2000);
+}
+
+async function saveState(key) {
+  if(!currentUser) return;
+  saving=true; setSS('syncing','Kaydediliyor...');
+  try { await set(userRef(key||todayKey()), dayStates[key||todayKey()]||{}); setSS('synced','✓ Senkronize'); }
+  catch { setSS('offline','Çevrimdışı'); }
+  saving=false;
+}
+
+async function saveProgs() {
+  if(!currentUser) return;
+  setSS('syncing','Program güncelleniyor...');
+  try { await set(userRef('programs'), programs); setSS('synced','✓ Güncellendi'); }
+  catch { setSS('offline','Çevrimdışı'); }
+}
+
+async function loadAll() {
+  setSS('syncing','Yükleniyor...');
+  try {
+    const [allSnap, progSnap] = await Promise.all([get(ref(db,`users/${currentUser.uid}/`)),get(userRef('programs'))]);
+    if(allSnap.exists()) {
+      const data = allSnap.val();
+      Object.keys(data).filter(k=>k.startsWith('day_')).forEach(k=>{ dayStates[k]=data[k]; });
+    }
+    if(progSnap.exists()) programs={...programs,...progSnap.val()};
+    setSS('synced','✓ Yüklendi');
+  } catch { setSS('offline','Çevrimdışı'); }
+}
+
+function getState(key) {
+  if(!dayStates[key]) dayStates[key]={rutin:{},meals:{},exercises:{},water:0,weight:null,notesBasari:'',notesHedef:''};
+  return dayStates[key];
+}
+
+// ── PROGRESS ──────────────────────────────────────────────────────────────────
+function getProgram(dow) {
+  const base = DP[dow];
+  const stored = programs[dow];
+  if(!stored) return base;
+  // Deep merge - always validate each field before using stored version
+  const safeMeal = (storedMeal, baseMeal) => {
+    if(!storedMeal) return baseMeal;
+    if(!storedMeal.items) return baseMeal;
+    if(!Array.isArray(storedMeal.items)) return baseMeal;
+    if(storedMeal.items.length === 0) return baseMeal;
+    return storedMeal;
+  };
+  return {
+    name: stored.name || base.name,
+    type: stored.type || base.type,
+    color: stored.color || base.color,
+    gradient: stored.gradient || base.gradient,
+    subtitle: stored.subtitle || base.subtitle,
+    emoji: stored.emoji || base.emoji,
+    rutin: (stored.rutin && Array.isArray(stored.rutin) && stored.rutin.length > 0) ? stored.rutin : base.rutin,
+    exercises: (stored.exercises && Array.isArray(stored.exercises) && stored.exercises.length > 0) ? stored.exercises : base.exercises,
+    meals: {
+      kahvalti: safeMeal(stored.meals && stored.meals.kahvalti, base.meals.kahvalti),
+      araOgun: safeMeal(stored.meals && stored.meals.araOgun, base.meals.araOgun),
+      aksam: safeMeal(stored.meals && stored.meals.aksam, base.meals.aksam),
+    }
+  };
+}
+function calcProgress(dow, key) {
+  const d = getProgram(dow);
+  const s = getState(key);
+  let done=0, total=0;
+  if(d.rutin) d.rutin.forEach((_,i)=>{total++;if(s.rutin&&s.rutin[i])done++;});
+  if(d.meals) {
+    ["kahvalti","araOgun","aksam"].forEach(k=>{
+      if(d.meals[k]&&d.meals[k].items) d.meals[k].items.forEach((_,i)=>{total++;if(s.meals&&s.meals[k+"_"+i])done++;});
+    });
+  }
+  if(d.exercises) d.exercises.forEach((_,i)=>{total++;if(s.exercises&&s.exercises[i])done++;});
+  return total>0?Math.round((done/total)*100):0;
+}
+
+// ── AUTH ─────────────────────────────────────────────────────────────────────
+// Handle redirect result on page load
+getRedirectResult(auth).then(result => {
+  if(result && result.user) console.log('Redirect login success');
+}).catch(e => console.log('Redirect result:', e));
+
+document.getElementById('gBtn').addEventListener('click', async () => {
+  const provider = new GoogleAuthProvider();
+  await signInWithRedirect(auth, provider);
+});
+window.doSignOut = async () => {
+  await fbSignOut(auth);
+  currentUser=null;
+  ['desktopApp','mobileApp'].forEach(id=>document.getElementById(id).style.display='none');
+  document.getElementById('loginScreen').classList.add('visible');
+  closeUserMenu();
+};
+window.toggleUserMenu = ()=>document.getElementById('userMenu').classList.toggle('open');
+window.closeUserMenu = ()=>document.getElementById('userMenu').classList.remove('open');
+document.addEventListener('click',e=>{if(!e.target.closest('#userMenu')&&!e.target.closest('.user-avatar'))document.getElementById('userMenu').classList.remove('open');});
+
+onAuthStateChanged(auth, async user => {
+  if(user) {
+    currentUser=user;
+    document.getElementById('loginScreen').classList.remove('visible');
+    const isMob=window.innerWidth<800;
+    document.getElementById('desktopApp').style.display=isMob?'none':'flex';
+    document.getElementById('mobileApp').style.display=isMob?'block':'none';
+    // Set avatars
+    [document.getElementById('deskUserAvatar'),document.getElementById('mobUserAvatar')].forEach(av=>{
+      if(user.photoURL) av.innerHTML=`<img src="${user.photoURL}" alt="">`;
+      else av.textContent=user.displayName?.[0]||'👤';
+    });
+    document.getElementById('menuAvatar').src=user.photoURL||'';
+    document.getElementById('menuName').textContent=user.displayName||'';
+    document.getElementById('menuEmail').textContent=user.email||'';
+    await loadAll();
+    renderAll();
+    // Realtime sync for today
+    onValue(userRef(todayKey()),snap=>{ if(snap.exists()){dayStates[todayKey()]={...getState(todayKey()),...snap.val()};renderAll();} });
+  } else {
+    document.getElementById('loginScreen').classList.add('visible');
+  }
+});
+
+window.addEventListener('resize',()=>{
+  if(!currentUser)return;
+  const isMob=window.innerWidth<800;
+  document.getElementById('desktopApp').style.display=isMob?'none':'flex';
+  document.getElementById('mobileApp').style.display=isMob?'block':'none';
+});
+
+// ── RENDER ALL ───────────────────────────────────────────────────────────────
+function renderAll() {
+  const isMob=window.innerWidth<800;
+  if(isMob) renderMobile();
+  else renderDesktop();
+}
+
+// ── DESKTOP RENDER ────────────────────────────────────────────────────────────
+function renderDesktop() {
+  const dates=getWeekDates(desktopWeekOffset);
+  const today=new Date();
+  const months=['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+  document.getElementById('deskWeekLabel').textContent=`${dates[0].getDate()} ${months[dates[0].getMonth()]} – ${dates[6].getDate()} ${months[dates[6].getMonth()]}`;
+
+  const grid=document.getElementById('deskGrid');
+  grid.innerHTML='';
+
+  dates.forEach(date=>{
+    const dow=date.getDay();
+    const key=dateKey(date);
+    const prog=getProgram(dow);
+    const state=getState(key);
+    const isToday=date.toDateString()===today.toDateString();
+    const pct=calcProgress(dow,key);
+
+    const col=document.createElement('div');
+    col.className='day-col'+(isToday?' today':'');
+
+    // Apply day color for today
+    if(isToday) {
+      document.documentElement.style.setProperty('--day-color',prog.color);
+      document.documentElement.style.setProperty('--day-gradient',prog.gradient);
+    }
+
+    col.innerHTML=`
+      <div class="day-col-header">
+        <div class="day-col-name">${prog.name}</div>
+        <div class="day-col-type">${prog.emoji} ${prog.type}</div>
+        <div class="day-col-progress">
+          <div class="day-prog-track"><div class="day-prog-fill" style="width:${pct}%;background:${prog.color}"></div></div>
+          <div class="day-prog-pct">${pct}%</div>
+        </div>
+      </div>
+      <div class="day-col-body" id="dcol-${dow}-${key}"></div>`;
+
+    grid.appendChild(col);
+
+    const body=col.querySelector('.day-col-body');
+
+    // Stats
+    const statRow=document.createElement('div');
+    statRow.className='desk-stat-row';
+    statRow.innerHTML=`
+      <div class="desk-stat-mini" onclick="deskEditStat('water','${key}')"><div class="val">${state.water||0}L</div><div class="lbl">Su</div></div>
+      <div class="desk-stat-mini" onclick="deskEditStat('weight','${key}')"><div class="val">${state.weight?state.weight+'kg':'—'}</div><div class="lbl">Kilo</div></div>`;
+    body.appendChild(statRow);
+
+    // Rutin
+    const rLabel=document.createElement('div');
+    rLabel.className='desk-section-label';
+    rLabel.innerHTML='<span>📅 Rutin</span><span class="desk-sec-add">+</span>';
+    rLabel.querySelector('.desk-sec-add').onclick=(e)=>{e.stopPropagation();window._editDow=dow;openModal('addRutinOverlay');};
+    body.appendChild(rLabel);
+
+    prog.rutin.forEach((item,i)=>{
+      const el=document.createElement('div');
+      el.className='desk-todo'+(state.rutin[i]?' done':'');
+      const check=document.createElement('div');check.className='desk-check';
+      check.onclick=(e)=>{e.stopPropagation();state.rutin[i]=!state.rutin[i];el.classList.toggle('done');saveState(key);renderDesktop();};
+      const txt=document.createElement('div');txt.className='desk-todo-text';txt.textContent=item.time+' '+item.text;
+      const editB=document.createElement('span');editB.className='desk-edit-btn';editB.textContent='✏️';
+      editB.onclick=(e)=>{e.stopPropagation();editingRutinIdx=i;window._editDow=dow;document.getElementById('editRutinTime').value=item.time;document.getElementById('editRutinText').value=item.text;openModal('editRutinOverlay');};
+      el.appendChild(check);el.appendChild(txt);el.appendChild(editB);
+      body.appendChild(el);
+    });
+
+    // Meals
+    const mLabel=document.createElement('div');
+    mLabel.className='desk-section-label';
+    mLabel.textContent='🥗 Beslenme';
+    body.appendChild(mLabel);
+
+    const mKeys=['kahvalti','araOgun','aksam'];
+    const mLabels=['🌅 Kahvaltı','🍎 Ara Öğün','🍽️ Akşam'];
+    mKeys.forEach((mk,ki)=>{
+      const mSubLabel=document.createElement('div');
+      mSubLabel.className='desk-sub-label';
+      mSubLabel.innerHTML='<span>'+mLabels[ki]+' · '+(prog.meals[mk].free?'Serbest':prog.meals[mk].kal+' kal')+'</span><span class="desk-sub-add">+</span>';
+      mSubLabel.querySelector('.desk-sub-add').onclick=(e)=>{e.stopPropagation();window._editDow=dow;document.getElementById('addMealType').value=mk;openModal('addMealOverlay');};
+      body.appendChild(mSubLabel);
+      prog.meals[mk].items.forEach((item,ii)=>{
+        const key2=mk+'_'+ii;
+        const el=document.createElement('div');
+        el.className='desk-todo'+(state.meals[key2]?' done':'');
+        const check=document.createElement('div');check.className='desk-check';
+        check.onclick=(e)=>{e.stopPropagation();state.meals[key2]=!state.meals[key2];el.classList.toggle('done');saveState(key);renderDesktop();};
+        const txt=document.createElement('div');txt.className='desk-todo-text';txt.textContent=item;
+        const delB=document.createElement('span');delB.className='desk-del-btn';delB.textContent='✕';
+        (function(cmk,cii,cdow){delB.onclick=(e)=>{e.stopPropagation();programs[cdow].meals[cmk].items.splice(cii,1);saveProgs();renderAll();showToast('Silindi');};})(mk,ii,dow);
+        el.appendChild(check);el.appendChild(txt);el.appendChild(delB);
+        body.appendChild(el);
+      });
+    });
+
+    // Exercises
+    const eLabel=document.createElement('div');
+    eLabel.className='desk-section-label';
+    eLabel.innerHTML='<span>💪 Antrenman</span><span class="desk-sec-add">+</span>';
+    eLabel.querySelector('.desk-sec-add').onclick=(e)=>{e.stopPropagation();editingExIdx=null;window._editDow=dow;document.getElementById('addExTitle').textContent='Egzersiz Ekle';['addExName','addExDesc','addExSets','addExRest'].forEach(id=>document.getElementById(id).value='');document.getElementById('addExDel').style.display='none';openModal('addExOverlay');};
+    body.appendChild(eLabel);
+
+    prog.exercises.forEach((ex,i)=>{
+      const el=document.createElement('div');
+      el.className='desk-todo'+(state.exercises[i]?' done':'');
+      const check=document.createElement('div');check.className='desk-check';
+      check.onclick=(e)=>{e.stopPropagation();state.exercises[i]=!state.exercises[i];el.classList.toggle('done');saveState(key);renderDesktop();};
+      const txt=document.createElement('div');txt.className='desk-todo-text';txt.textContent=ex.name+' — '+ex.sets;
+      const editB=document.createElement('span');editB.className='desk-edit-btn';editB.textContent='✏️';
+      (function(ci,cex,cdow){editB.onclick=(e)=>{e.stopPropagation();editingExIdx=ci;window._editDow=cdow;document.getElementById('addExTitle').textContent='Egzersiz Düzenle';document.getElementById('addExName').value=cex.name;document.getElementById('addExDesc').value=cex.desc;document.getElementById('addExSets').value=cex.sets;document.getElementById('addExRest').value=cex.rest;document.getElementById('addExDel').style.display='block';openModal('addExOverlay');};})(i,ex,dow);
+      el.appendChild(check);el.appendChild(txt);el.appendChild(editB);
+      body.appendChild(el);
+    });
+
+    // Notes
+    const noteLabel=document.createElement('div');noteLabel.className='desk-section-label';noteLabel.textContent='📝 Günün Notu';
+    body.appendChild(noteLabel);
+    const na1=document.createElement('div');na1.style.cssText='padding:4px 12px 2px;font-family:var(--mono);font-size:8px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;';na1.textContent='Bugünün 3 Başarısı';body.appendChild(na1);
+    const ta1=document.createElement('textarea');ta1.style.cssText='width:calc(100% - 20px);margin:0 10px 6px;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:7px 9px;color:var(--text);font-family:var(--display);font-size:10px;outline:none;resize:none;min-height:55px;line-height:1.5;';
+    ta1.placeholder='1.
+2.
+3.';ta1.value=state.notesBasari||'';
+    let nt1;ta1.addEventListener('input',e=>{state.notesBasari=e.target.value;clearTimeout(nt1);nt1=setTimeout(()=>saveState(key),1000);});
+    body.appendChild(ta1);
+    const na2=document.createElement('div');na2.style.cssText='padding:4px 12px 2px;font-family:var(--mono);font-size:8px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;';na2.textContent='Yarının 3 Hedefi';body.appendChild(na2);
+    const ta2=document.createElement('textarea');ta2.style.cssText='width:calc(100% - 20px);margin:0 10px 6px;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:7px 9px;color:var(--text);font-family:var(--display);font-size:10px;outline:none;resize:none;min-height:55px;line-height:1.5;';
+    ta2.placeholder='1.
+2.
+3.';ta2.value=state.notesHedef||'';
+    let nt2;ta2.addEventListener('input',e=>{state.notesHedef=e.target.value;clearTimeout(nt2);nt2=setTimeout(()=>saveState(key),1000);});
+    body.appendChild(ta2);
+  });
+}
+
+window.changeWeek = (dir) => { desktopWeekOffset+=dir; renderDesktop(); };
+
+window.deskEditStat = (type,key) => {
+  const val=prompt(type==='water'?'Su (litre):':'Kilo (kg):');
+  if(val===null) return;
+  const n=parseFloat(val);
+  if(isNaN(n)) return;
+  const s=getState(key);
+  if(type==='water') s.water=n; else s.weight=n;
+  saveState(key); renderDesktop(); showToast('✓ Kaydedildi');
+};
+
+// ── MOBILE RENDER ─────────────────────────────────────────────────────────────
+function renderMobile() {
+  const today=new Date();
+  const months=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+  document.getElementById('mobDate').textContent=`${today.getDate()} ${months[today.getMonth()]}`;
+
+  const dow=currentMobileDay;
+  const prog=getProgram(dow);
+  document.documentElement.style.setProperty('--day-color',prog.color);
+  document.documentElement.style.setProperty('--day-gradient',prog.gradient);
+
+  // Day dots
+  const dots=document.getElementById('dayDots');
+  dots.innerHTML='';
+  const dayNames=['Pa','Pt','Sa','Ça','Pe','Cu','Ct'];
+  for(let i=1;i<=7;i++){
+    const d=i===7?0:i;
+    const dot=document.createElement('div');
+    dot.className='day-dot'+(d===today.getDay()?' today-dot':'')+(d===dow?' active':'');
+    dot.textContent=dayNames[d===0?6:d-1];
+    dot.onclick=()=>switchMobileDay(d);
+    dots.appendChild(dot);
+  }
+
+  // Build slides
+  const track=document.getElementById('swipeTrack');
+  track.innerHTML='';
+  const days=[1,2,3,4,5,6,0];
+  days.forEach(d=>{
+    const slide=document.createElement('div');
+    slide.className='mobile-day-slide';
+    slide.id=`slide-${d}`;
+    renderMobileSlide(slide,d);
+    track.appendChild(slide);
+  });
+
+  // Position
+  const idx=days.indexOf(dow);
+  track.style.transform=`translateX(-${idx*100}vw)`;
+  track.style.transition='none';
+
+  // Swipe
+  setupSwipe(days);
+}
+
+function renderMobileSlide(slide,dow) {
+  const today=new Date();
+  const date=new Date(today);
+  const diff=(dow===0?7:dow)-(today.getDay()===0?7:today.getDay());
+  date.setDate(today.getDate()+diff);
+  const key=dateKey(date);
+  const prog=getProgram(dow);
+  const state=getState(key);
+  const pct=calcProgress(dow,key);
+
+  slide.innerHTML=`
+    <div class="mob-header" style="padding-top:0;margin-bottom:12px">
+      <div class="mob-day-hero" style="margin:0 20px">
+        <div class="mob-day-hero-inner">
+          <div class="mob-day-tag" style="color:${prog.color}">${prog.emoji} ${prog.type}</div>
+          <div class="mob-day-name">${prog.name}</div>
+          <div class="mob-day-sub">${prog.subtitle}</div>
+        </div>
+      </div>
+    </div>
+    <div class="mob-progress">
+      <div class="mob-prog-label"><span>İlerleme</span><span class="mob-prog-pct" style="color:${prog.color}">${pct}%</span></div>
+      <div class="mob-prog-track"><div class="mob-prog-fill" style="width:${pct}%;background:${prog.color};box-shadow:0 0 10px ${prog.color}"></div></div>
+    </div>
+    <div class="mob-stats">
+      <div class="mob-stat" style="--sc:#4a9eff" onclick="mobToggleStat('water','${key}',this)">
+        <div class="mob-stat-icon">💧</div>
+        <div class="mob-stat-val" id="wv-${key}">${state.water||0}</div>
+        <div class="mob-stat-label">Litre Su</div>
+        <div class="stat-input-wrap" id="ww-${key}"><input type="number" class="stat-input" id="wi-${key}" placeholder="2.5" step="0.25"><button class="stat-save" onclick="mobSaveStat('water','${key}',event)">✓</button></div>
+      </div>
+      <div class="mob-stat" style="--sc:#e94560" onclick="mobToggleStat('weight','${key}',this)">
+        <div class="mob-stat-icon">⚖️</div>
+        <div class="mob-stat-val" id="kwv-${key}">${state.weight?state.weight+'':'—'}</div>
+        <div class="mob-stat-label">Kilo (kg)</div>
+        <div class="stat-input-wrap" id="kww-${key}"><input type="number" class="stat-input" id="kwi-${key}" placeholder="101" step="0.1"><button class="stat-save" onclick="mobSaveStat('weight','${key}',event)">✓</button></div>
+      </div>
+    </div>`;
+
+  // Sections
+  const sc=document.createElement('div');
+  sc.id=`mob-sections-${dow}`;
+
+  // RUTIN
+  const rutinDone=prog.rutin.filter((_,i)=>state.rutin[i]).length;
+  const rutinSec=mkMobSection(`mob-rutin-${dow}`,'📅','Günlük Rutin',`${rutinDone}/${prog.rutin.length}`,'rgba(255,255,255,.06)',prog.color);
+  const rb=rutinSec.querySelector('.mob-sec-body');
+  prog.rutin.forEach((item,i)=>{
+    const el=document.createElement('div');
+    el.className='mob-todo'+(state.rutin[i]?' done':'');
+    el.innerHTML=`<div class="mob-check"></div><div class="mob-todo-content"><div class="mob-todo-time">${item.time}</div><div class="mob-todo-text">${item.text}</div></div><span class="mob-todo-edit" onclick="openEditRutin(${i},${dow},event)">✏️</span>`;
+    el.querySelector('.mob-check').onclick=(e)=>{e.stopPropagation();state.rutin[i]=!state.rutin[i];el.classList.toggle('done');saveState(key);renderMobileSlide(slide,dow);if(state.rutin[i])showToast('✓ Tamamlandı');};
+    rb.appendChild(el);
+  });
+  const addR=document.createElement('button');
+  addR.className='add-btn';addR.innerHTML='+ Rutin Ekle';addR.onclick=()=>{window._editDow=dow;openModal('addRutinOverlay');};
+  rb.appendChild(addR);
+  sc.appendChild(rutinSec);
+
+  // BESLENME
+  const mKeys=['kahvalti','araOgun','aksam'];
+  const mLabels=['Kahvaltı','Ara Öğün','Akşam Yemeği'];
+  let md=0,mt=0;
+  mKeys.forEach(k=>prog.meals[k].items.forEach((_,i)=>{mt++;if(state.meals[`${k}_${i}`])md++;}));
+  const mealSec=mkMobSection(`mob-meal-${dow}`,'🥗','Beslenme',`${md}/${mt}`,'rgba(0,212,170,.06)',prog.color);
+  const mb=mealSec.querySelector('.mob-sec-body');
+  mKeys.forEach((mk,ki)=>{
+    const meal=prog.meals[mk];
+    const sub=document.createElement('div');
+    sub.className='mob-subsection';
+    sub.innerHTML=`<div class="mob-sub-title">${mLabels[ki]} <span class="mob-kcal">${meal.free?'Serbest 🎉':meal.kal+' kal'}</span></div>`;
+    meal.items.forEach((item,ii)=>{
+      const key2=`${mk}_${ii}`;
+      const el=document.createElement('div');
+      el.className='mob-meal'+(state.meals[key2]?' done':'');
+      el.innerHTML=`<div class="mob-meal-dot"></div><div class="mob-meal-text">${item}</div><span class="mob-meal-del" onclick="deleteMealItem('${mk}',${ii},${dow},event)">✕</span><div class="mob-meal-check"></div>`;
+      el.querySelector('.mob-meal-check').onclick=(e)=>{e.stopPropagation();state.meals[key2]=!state.meals[key2];el.classList.toggle('done');saveState(key);renderMobileSlide(slide,dow);if(state.meals[key2])showToast('✓ Yendi 🥗');};
+      sub.appendChild(el);
+    });
+    mb.appendChild(sub);
+  });
+  const addM=document.createElement('button');
+  addM.className='add-btn';addM.innerHTML='+ Yemek Ekle';addM.onclick=()=>{window._editDow=dow;openModal('addMealOverlay');};
+  mb.appendChild(addM);
+  const callout=document.createElement('div');
+  callout.className='mob-callout';callout.textContent='💧 2.5–3L  |  🎯 ~2.100 kal  |  💪 ~155g protein';
+  mb.appendChild(callout);
+  sc.appendChild(mealSec);
+
+  // ANTRENMAN
+  const exDone=prog.exercises.filter((_,i)=>state.exercises[i]).length;
+  const exSec=mkMobSection(`mob-ex-${dow}`,'💪','Antrenman',`${exDone}/${prog.exercises.length}`,'rgba(233,69,96,.05)',prog.color);
+  const eb=exSec.querySelector('.mob-sec-body');
+  const ws=document.createElement('div');ws.className='mob-subsection';ws.innerHTML=`<div class="mob-sub-title">Isınma · 10 dk</div>`;
+  const wi=document.createElement('div');wi.className='mob-meal';wi.innerHTML=`<div class="mob-meal-dot" style="background:${prog.color}"></div><div class="mob-meal-text">Kol çevirme, boyun hareketleri, squat</div>`;
+  ws.appendChild(wi);eb.appendChild(ws);
+  const es=document.createElement('div');es.className='mob-subsection';es.innerHTML='<div class="mob-sub-title">Egzersizler · 60 dk</div>';eb.appendChild(es);
+  prog.exercises.forEach((ex,i)=>{
+    const el=document.createElement('div');
+    el.className='mob-ex-card'+(state.exercises[i]?' done':'');
+    el.innerHTML=`<div class="mob-ex-header"><div class="mob-ex-name">${ex.name}</div><div class="mob-ex-actions"><button class="mob-ex-edit" onclick="openEditEx(${i},${dow},event)">✏️</button><div class="mob-ex-done"></div></div></div><div class="mob-ex-desc">${ex.desc}</div><div class="mob-ex-badges"><span class="mob-ex-badge sets" style="background:${prog.color}">${ex.sets}</span><span class="mob-ex-badge rest">⏱ ${ex.rest}</span></div>`;
+    el.querySelector('.mob-ex-done').onclick=(e)=>{e.stopPropagation();state.exercises[i]=!state.exercises[i];el.classList.toggle('done');saveState(key);renderMobileSlide(slide,dow);if(state.exercises[i])showToast('💪 Set tamamlandı!');};
+    eb.appendChild(el);
+  });
+  const addE=document.createElement('button');addE.className='add-btn';addE.innerHTML='+ Egzersiz Ekle';addE.onclick=()=>openAddEx(dow);
+  eb.appendChild(addE);
+  const cs=document.createElement('div');cs.className='mob-subsection';cs.innerHTML=`<div class="mob-sub-title">Soğuma · 10 dk</div>`;
+  const ci=document.createElement('div');ci.className='mob-meal';ci.innerHTML=`<div class="mob-meal-dot" style="background:${prog.color}"></div><div class="mob-meal-text">Germe hareketleri</div>`;
+  cs.appendChild(ci);eb.appendChild(cs);
+  sc.appendChild(exSec);
+
+  // NOTLAR
+  const noteSec=mkMobSection(`mob-note-${dow}`,'📝','Günün Notu','','rgba(245,166,35,.05)',prog.color);
+  const nb=noteSec.querySelector('.mob-sec-body');
+  nb.innerHTML=`<div class="mob-note-area"><div class="mob-note-label">Bugünün 3 Başarısı</div><textarea class="mob-note-input" id="nb-${dow}" placeholder="1.&#10;2.&#10;3." rows="3">${state.notesBasari||''}</textarea></div><div class="mob-note-area" style="padding-top:0"><div class="mob-note-label">Yarının 3 Hedefi</div><textarea class="mob-note-input" id="nh-${dow}" placeholder="1.&#10;2.&#10;3." rows="3">${state.notesHedef||''}</textarea></div>`;
+  sc.appendChild(noteSec);
+  slide.appendChild(sc);
+
+  // Motivation
+  const mot=document.createElement('div');
+  mot.className='mob-motivation';
+  mot.innerHTML=`<p>"${MOTIVATIONS[dow%MOTIVATIONS.length]}"</p><span class="author">— MonkMode Daily</span>`;
+  slide.appendChild(mot);
+
+  setTimeout(()=>{
+    let t;
+    document.getElementById(`nb-${dow}`)?.addEventListener('input',e=>{state.notesBasari=e.target.value;clearTimeout(t);t=setTimeout(()=>saveState(key),1000);});
+    document.getElementById(`nh-${dow}`)?.addEventListener('input',e=>{state.notesHedef=e.target.value;clearTimeout(t);t=setTimeout(()=>saveState(key),1000);});
+  },100);
+}
+
+function mkMobSection(id,icon,title,count,bg,color) {
+  const sec=document.createElement('div');
+  sec.className='mob-section';sec.id=id;
+  sec.innerHTML=`<div class="mob-sec-header" onclick="this.parentElement.classList.toggle('collapsed')"><div class="mob-sec-title"><div class="mob-sec-icon" style="background:${bg}">${icon}</div>${title}</div><div class="mob-sec-meta"><span class="mob-sec-count">${count}</span><span class="mob-sec-chev">▾</span></div></div><div class="mob-sec-body"></div>`;
+  return sec;
+}
+
+function setupSwipe(days) {
+  const wrap=document.getElementById('swipeWrap');
+  const track=document.getElementById('swipeTrack');
+  let startX=0,isDragging=false,startIdx=days.indexOf(currentMobileDay);
+
+  const onStart=(e)=>{startX=e.touches?e.touches[0].clientX:e.clientX;isDragging=true;track.style.transition='none';};
+  const onMove=(e)=>{if(!isDragging)return;const dx=(e.touches?e.touches[0].clientX:e.clientX)-startX;const idx=days.indexOf(currentMobileDay);track.style.transform=`translateX(calc(-${idx*100}vw + ${dx}px))`;};
+  const onEnd=(e)=>{
+    if(!isDragging)return;isDragging=false;
+    const dx=(e.changedTouches?e.changedTouches[0].clientX:e.clientX)-startX;
+    const idx=days.indexOf(currentMobileDay);
+    if(Math.abs(dx)>60){
+      const newIdx=dx<0?Math.min(idx+1,6):Math.max(idx-1,0);
+      currentMobileDay=days[newIdx];
+    }
+    track.style.transition='transform .3s cubic-bezier(.4,0,.2,1)';
+    track.style.transform=`translateX(-${days.indexOf(currentMobileDay)*100}vw)`;
+    document.documentElement.style.setProperty('--day-color',(programs[currentMobileDay]||DP[currentMobileDay]).color);
+    document.documentElement.style.setProperty('--day-gradient',(programs[currentMobileDay]||DP[currentMobileDay]).gradient);
+    renderMobile();
+  };
+  wrap.addEventListener('touchstart',onStart,{passive:true});
+  wrap.addEventListener('touchmove',onMove,{passive:true});
+  wrap.addEventListener('touchend',onEnd);
+}
+
+function switchMobileDay(dow) { currentMobileDay=dow; renderMobile(); }
+
+// ── STAT ──────────────────────────────────────────────────────────────────────
+window.mobToggleStat=(type,key,card)=>{
+  const wrapId=(type==='water'?'ww':'kww')+'-'+key;
+  document.getElementById(wrapId)?.classList.toggle('open');
+  const inputId=(type==='water'?'wi':'kwi')+'-'+key;
+  document.getElementById(inputId)?.focus();
+};
+window.mobSaveStat=(type,key,e)=>{
+  e.stopPropagation();
+  const inputId=(type==='water'?'wi':'kwi')+'-'+key;
+  const val=parseFloat(document.getElementById(inputId).value);
+  if(isNaN(val))return;
+  const s=getState(key);
+  if(type==='water'){s.water=val;const el=document.getElementById('wv-'+key);if(el)el.textContent=val;showToast(`💧 ${val}L kaydedildi`);}
+  else{s.weight=val;const el=document.getElementById('kwv-'+key);if(el)el.textContent=val;showToast(`⚖️ ${val}kg kaydedildi`);}
+  saveState(key);
+  const wrapId=(type==='water'?'ww':'kww')+'-'+key;
+  document.getElementById(wrapId)?.classList.remove('open');
+};
+
+// ── EDIT RUTIN ────────────────────────────────────────────────────────────────
+window.openEditRutin=(i,dow,e)=>{e.stopPropagation();editingRutinIdx=i;window._editDow=dow;const p=getProgram(dow);document.getElementById('editRutinTime').value=p.rutin[i].time;document.getElementById('editRutinText').value=p.rutin[i].text;openModal('editRutinOverlay');};
+window.saveRutinItem=()=>{const dow=window._editDow;programs[dow].rutin[editingRutinIdx]={time:document.getElementById('editRutinTime').value,text:document.getElementById('editRutinText').value};saveProgs();closeModal('editRutinOverlay');renderAll();showToast('✓ Güncellendi');};
+window.deleteRutinItem=()=>{const dow=window._editDow;programs[dow].rutin.splice(editingRutinIdx,1);saveProgs();closeModal('editRutinOverlay');renderAll();showToast('Silindi');};
+window.addRutinItem=()=>{const dow=window._editDow||new Date().getDay();programs[dow].rutin.push({time:document.getElementById('addRutinTime').value||'—',text:document.getElementById('addRutinText').value});document.getElementById('addRutinTime').value='';document.getElementById('addRutinText').value='';saveProgs();closeModal('addRutinOverlay');renderAll();showToast('✓ Eklendi');};
+
+// ── EDIT MEAL ─────────────────────────────────────────────────────────────────
+window.deleteMealItem=(mk,ii,dow,e)=>{e.stopPropagation();programs[dow].meals[mk].items.splice(ii,1);saveProgs();renderAll();showToast('Silindi');};
+window.addMealItem=()=>{const dow=window._editDow||new Date().getDay();const mk=document.getElementById('addMealType').value;const text=document.getElementById('addMealText').value;if(!text)return;programs[dow].meals[mk].items.push(text);document.getElementById('addMealText').value='';saveProgs();closeModal('addMealOverlay');renderAll();showToast('✓ Eklendi');};
+
+// ── EDIT EXERCISE ─────────────────────────────────────────────────────────────
+window.openEditEx=(i,dow,e)=>{e.stopPropagation();editingExIdx=i;window._editDow=dow;const p=getProgram(dow);document.getElementById('addExTitle').textContent='Egzersiz Düzenle';document.getElementById('addExName').value=p.exercises[i].name;document.getElementById('addExDesc').value=p.exercises[i].desc;document.getElementById('addExSets').value=p.exercises[i].sets;document.getElementById('addExRest').value=p.exercises[i].rest;document.getElementById('addExDel').style.display='block';openModal('addExOverlay');};
+window.openAddEx=(dow)=>{editingExIdx=null;window._editDow=dow;document.getElementById('addExTitle').textContent='Egzersiz Ekle';['addExName','addExDesc','addExSets','addExRest'].forEach(id=>document.getElementById(id).value='');document.getElementById('addExDel').style.display='none';openModal('addExOverlay');};
+window.saveExItem=()=>{const dow=window._editDow;const ex={name:document.getElementById('addExName').value,desc:document.getElementById('addExDesc').value,sets:document.getElementById('addExSets').value||'—',rest:document.getElementById('addExRest').value||'—'};if(!ex.name)return;if(editingExIdx!==null)programs[dow].exercises[editingExIdx]=ex;else programs[dow].exercises.push(ex);saveProgs();closeModal('addExOverlay');renderAll();showToast(editingExIdx!==null?'✓ Güncellendi':'✓ Eklendi');};
+window.deleteExItem=()=>{const dow=window._editDow;programs[dow].exercises.splice(editingExIdx,1);saveProgs();closeModal('addExOverlay');renderAll();showToast('Silindi');};
+
+// ── WEEKLY SUMMARY ────────────────────────────────────────────────────────────
+window.openSummary=()=>{ renderSummary(); document.getElementById('summaryOverlay').classList.add('open'); };
+window.closeSummary=()=>document.getElementById('summaryOverlay').classList.remove('open');
+window.changeSummaryWeek=(dir)=>{ summaryWeekOffset+=dir; renderSummary(); };
+
+function renderSummary() {
+  const dates=getWeekDates(summaryWeekOffset);
+  const months=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+  document.getElementById('summaryPeriod').textContent=`${dates[0].getDate()} ${months[dates[0].getMonth()]} – ${dates[6].getDate()} ${months[dates[6].getMonth()]}`;
+
+  const content=document.getElementById('summaryContent');
+  content.innerHTML='';
+
+  // Gather data
+  let totalPct=0, completeDays=0, totalWater=0, waterCount=0;
+  let firstWeight=null, lastWeight=null;
+  const dayData=[];
+
+  dates.forEach(date=>{
+    const dow=date.getDay();
+    const key=dateKey(date);
+    const s=getState(key);
+    const pct=calcProgress(dow,key);
+    totalPct+=pct;
+    if(pct===100) completeDays++;
+    if(s.water>0){totalWater+=s.water;waterCount++;}
+    if(s.weight){if(!firstWeight)firstWeight=s.weight;lastWeight=s.weight;}
+    dayData.push({date,dow,key,pct,s});
+  });
+
+  const avgPct=Math.round(totalPct/7);
+  const avgWater=waterCount>0?(totalWater/waterCount).toFixed(1):0;
+
+  // Stats grid
+  const statsGrid=document.createElement('div');
+  statsGrid.className='summary-stats-grid';
+  statsGrid.innerHTML=`
+    <div class="sum-stat"><div class="sum-stat-val good">${completeDays}/7</div><div class="sum-stat-label">Tam Gün</div></div>
+    <div class="sum-stat"><div class="sum-stat-val ${avgPct>=80?'good':avgPct>=50?'accent':''}">${avgPct}%</div><div class="sum-stat-label">Ortalama</div></div>
+    <div class="sum-stat"><div class="sum-stat-val">${avgWater}L</div><div class="sum-stat-label">Ort. Su</div></div>
+    <div class="sum-stat"><div class="sum-stat-val accent">${firstWeight?firstWeight+'kg':'—'}</div><div class="sum-stat-label">Başlangıç Kilo</div></div>
+    <div class="sum-stat"><div class="sum-stat-val accent">${lastWeight?lastWeight+'kg':'—'}</div><div class="sum-stat-label">Bitiş Kilo</div></div>`;
+  if(firstWeight&&lastWeight){
+    const diff=(lastWeight-firstWeight).toFixed(1);
+    const cls=diff<0?'loss':'gain';
+    statsGrid.innerHTML+=`<div class="sum-stat"><div class="sum-stat-val"><span class="sum-weight-change ${cls}">${diff>0?'+':''}${diff} kg</span></div><div class="sum-stat-label">Kilo Değişimi</div></div>`;
+  }
+  content.appendChild(statsGrid);
+
+  // Day grid
+  const title1=document.createElement('div');title1.className='summary-section-title';title1.textContent='Günlük Tamamlanma';
+  content.appendChild(title1);
+  const daysGrid=document.createElement('div');daysGrid.className='summary-days';
+  dayData.forEach(({date,dow,pct})=>{
+    const prog=getProgram(dow);
+    const d=document.createElement('div');
+    d.className='sum-day'+(pct===100?' complete':pct>0?' partial':'');
+    d.innerHTML=`<div class="sum-day-name">${prog.name.slice(0,3)}</div><div class="sum-day-emoji">${prog.emoji}</div><div class="sum-day-pct">${pct}%</div>`;
+    daysGrid.appendChild(d);
+  });
+  content.appendChild(daysGrid);
+
+  // Notes
+  const notesWithContent=dayData.filter(({s})=>s.notesBasari||s.notesHedef);
+  if(notesWithContent.length>0){
+    const title2=document.createElement('div');title2.className='summary-section-title';title2.textContent='Haftalık Notlar';
+    content.appendChild(title2);
+    notesWithContent.forEach(({dow,s})=>{
+      const prog=getProgram(dow);
+      const noteEl=document.createElement('div');
+      noteEl.className='sum-notes';
+      let txt=`${prog.emoji} ${prog.name}\n`;
+      if(s.notesBasari)txt+=`✅ Başarılar:\n${s.notesBasari}\n`;
+      if(s.notesHedef)txt+=`🎯 Hedefler:\n${s.notesHedef}`;
+      noteEl.textContent=txt;
+      content.appendChild(noteEl);
+    });
+  }
+
+  // Antrenman özeti
+  const title3=document.createElement('div');title3.className='summary-section-title';title3.textContent='Antrenman Özeti';
+  content.appendChild(title3);
+  const antTable=document.createElement('div');antTable.className='summary-days';
+  dayData.forEach(({dow,key,s})=>{
+    const prog=getProgram(dow);
+    const exDone=prog.exercises.filter((_,i)=>s.exercises[i]).length;
+    const d=document.createElement('div');
+    d.className='sum-day'+(exDone===prog.exercises.length&&prog.exercises.length>0?' complete':'');
+    d.innerHTML=`<div class="sum-day-name">${prog.type}</div><div class="sum-day-emoji">${exDone}/${prog.exercises.length}</div><div class="sum-day-pct">${prog.exercises.length>0?Math.round(exDone/prog.exercises.length*100)+'%':'—'}</div>`;
+    antTable.appendChild(d);
+  });
+  content.appendChild(antTable);
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+window.openModal=(id)=>document.getElementById(id).classList.add('open');
+window.closeModal=(id)=>document.getElementById(id).classList.remove('open');
+document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
+
+window.mobScrollTo=(id,btn)=>{
+  const slide=document.querySelector(`#slide-${currentMobileDay}`);
+  const el=slide?.querySelector(`[id*="${id}"]`)||slide;
+  el?.scrollIntoView({behavior:'smooth',block:'start'});
+  document.querySelectorAll('.mob-nav-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+};
+window.showReset=()=>document.getElementById('resetOverlay').classList.add('open');
+window.hideReset=()=>document.getElementById('resetOverlay').classList.remove('open');
+window.resetDay=()=>{
+  const today=new Date();const key=todayKey();const s=getState(key);
+  s.rutin={};s.meals={};s.exercises={};
+  saveState(key);hideReset();renderAll();showToast('🔄 Gün sıfırlandı');
+};
+
+// ── BUTTON EVENT LISTENERS ────────────────────────────────────────────────────
+document.getElementById('deskSummaryBtn')?.addEventListener('click', ()=>{ summaryWeekOffset=0; renderSummary(); document.getElementById('summaryOverlay').classList.add('open'); });
+document.getElementById('mobSummaryBtn')?.addEventListener('click', ()=>{ summaryWeekOffset=0; renderSummary(); document.getElementById('summaryOverlay').classList.add('open'); });
+document.getElementById('closeSummaryBtn')?.addEventListener('click', ()=>document.getElementById('summaryOverlay').classList.remove('open'));
+document.getElementById('sumPrevBtn')?.addEventListener('click', ()=>{ summaryWeekOffset--; renderSummary(); });
+document.getElementById('sumNextBtn')?.addEventListener('click', ()=>{ summaryWeekOffset++; renderSummary(); });
+document.getElementById('summaryOverlay')?.addEventListener('click', e=>{ if(e.target===document.getElementById('summaryOverlay')) document.getElementById('summaryOverlay').classList.remove('open'); });
+
+let toastTimer;
+window.showToast=function(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2500);};
+function showToast(msg){window.showToast(msg);}
+</script>
+</body>
+</html>
